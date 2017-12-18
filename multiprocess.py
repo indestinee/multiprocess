@@ -170,14 +170,14 @@ class MP(object):
 if __name__ == '__main__':# {{{
     from IPython import embed
     def add(a, b):
-        # time.sleep(0.5)
+        time.sleep(0.5)
         return [a+b]
     data = []
     # for i in range(100):
         # data.append({'a': i, 'b': i+i})
     for i in range(100):
         data.append([i, i+i])
-    mp = MP(thread_num=0, func=add, args=data,\
+    mp = MP(thread_num=4, func=add, args=data,\
             batch_size=3, random_shuffle=True, keep_order=True, object_type='thread')
     
     if 1 == 1:
