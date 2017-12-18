@@ -83,7 +83,7 @@ class MP(object):
         #   tell boss job finished
         self.q_finish.put([])
         print('[SUC] worker #%d finishes jobs and goes home ..' % index)
-# }}}
+    # }}}
     def contractor(self):# {{{
         print('[OPR] contractor starts assigining jobs ..')
         #   assign tasks
@@ -95,46 +95,19 @@ class MP(object):
         for i in range(self.thread_num):
             self.q_task.put([])
         print('[SUC] contractor finishes jobs and goes home ..')
-# }}}
-    def work(self):# {{{
+    # }}}
+    def work_start(self):# {{{
         print('[OPR] work starts ..')
         print('-' * 48)
         self.result.clear()
         self.receiver.clear()
         #   start contrator and workers
         self.contractor.start()
-        t0 = time.time()
+        self.t0 = time.time()
         for worker in self.workers:
             worker.start()
-
-        ####    receiver    ####
-        
-        #   initialize counters
-        working_workers = self.thread_num
-        finish, task_num, rate = 0, self.task_num, 0.0
-
-        while working_workers > 0:
-            #   receive results from workers
-            data = self.q_finish.get()
-            if len(data) == 0:
-                #   a woker has done all jobs and leaves
-                working_workers -= 1
-                if working_workers == 0:
-                    break
-            else:
-                self.receiver += data
-
-            #   print logs
-            finish += len(data)
-            tmp = finish * 100.0 / task_num
-            if tmp - rate >= 1:
-                rate = tmp
-                t1 = time.time() - t0
-                t2 = t1 / rate * 100.0 - t1
-                print('[LOG] done %.2f%% (%d/%d), TIME: %.2f, ETA: %.2f' %\
-                    (rate, finish, task_num, t1, t2))
-        ####    receiver    #####
-        
+    # }}}
+    def work_finish(self):# {{{
         #   wait all process done
         self.contractor.join()
         for worker in self.workers:
@@ -149,12 +122,51 @@ class MP(object):
 
         print('[SUC] all work done ..')
         print('-' * 48)
-# }}}
+    # }}}
+    def run_receiver(self):# {{{
+        ####    receiver    ####
+        #   initialize counters
+        working_workers = self.thread_num
+        finish, task_num, rate = 0, self.task_num, 0.0
+        while working_workers > 0:
+            #   receive results from workers
+            data = self.q_finish.get()
+            if len(data) == 0:
+                #   a woker has done all jobs and leaves
+                working_workers -= 1
+                if working_workers == 0:
+                    break
+            else:
+                yield data
+            #   print logs
+            finish += len(data)
+            tmp = finish * 100.0 / task_num
+            if tmp - rate >= 1:
+                rate = tmp
+                t1 = time.time() - self.t0
+                t2 = t1 / rate * 100.0 - t1
+                print('[LOG] done %.2f%% (%d/%d), TIME: %.2f, ETA: %.2f' %\
+                    (rate, finish, task_num, t1, t2))
+        ####    receiver    #####
+    # }}}
+    def generator(self):# {{{
+        self.work_start()
+        for data in self.run_receiver():
+            yield data
+        self.work_finish
+    # }}}
+    def work(self):# {{{
+        self.work_start()
+        for data in self.run_receiver():
+            self.receiver += data
+        self.work_finish()
+    # }}}
 
 if __name__ == '__main__':# {{{
     from IPython import embed
     def add(a, b):
-        return a + b
+        time.sleep(0.5)
+        return [a+b for i in range(1024 * 1024)]
     data = []
     # for i in range(100):
         # data.append({'a': i, 'b': i+i})
@@ -162,9 +174,18 @@ if __name__ == '__main__':# {{{
         data.append([i, i+i])
     mp = MP(thread_num=4, func=add, args=data,\
             batch_size=3, random_shuffle=True, keep_order=True, object_type='thread')
-    mp.work()
-    print(mp.order[-10:])
-    print(mp.receiver[-10:])
-    print(mp.result[-10:])
+    
+    if 1 == 1:
+        #   save memory
+        for data in mp.generator():
+            pass
+            # print('Data:', data)
+    else:   
+        #   run as default
+        mp.work()
+    input()
+    # print(mp.order[-10:])
+    # print(mp.receiver[-10:])
+    # print(mp.result[-10:])
     pass
 # }}}
