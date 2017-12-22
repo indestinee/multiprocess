@@ -21,6 +21,7 @@ class MP(object):
             object_type: only allowed in ['process', 'thread']
                 process stands for multiprocessing
                 thread stands for threading
+            worker_prepare: the function needs to excuse by each process
         '''
         if object_type == 'process':
             from multiprocessing import Process, Queue
@@ -72,7 +73,7 @@ class MP(object):
 
             if len(packs) == 0:
                 #   no task left
-                print('[OPR] worker #%d gets salary ..' % index)
+                # print('[OPR] worker #%d gets salary ..' % index)
                 break
             
             #   do each task from the task-packs
@@ -93,11 +94,12 @@ class MP(object):
         #   assign tasks
         for i in range(0, self.task_num, self.batch_size):
             self.q_task.put(self.order[i: i+self.batch_size])
-
-        print('[OPR] contractor starts paying salaries ..')
+        # print('[SUC] contractor has assigned %d jobs ..' % ((self.task_num-1+self.batch_size)//self.batch_size))
+        # print('[OPR] contractor starts paying salaries ..')
         #   pay salary (tell workers no jobs any more)
         for i in range(max(1, self.thread_num)):
             self.q_task.put([])
+        # print('[SUC] contractor has paid %d salaries ..' % self.thread_num)
         print('[SUC] contractor finishes jobs and goes home ..')
     # }}}
     def work_start(self):# {{{
@@ -131,7 +133,7 @@ class MP(object):
         ####    receiver    ####
         #   initialize counters
         if self.thread_num == 0:
-            self.worker(-1)
+            self.worker(0)
             
         working_workers = max(1, self.thread_num)
         finish, task_num, rate = 0, self.task_num, 0.0
@@ -139,12 +141,13 @@ class MP(object):
             #   receive results from workers
             data = self.q_finish.get()
             if len(data) == 0:
-                #   a woker has done all jobs and leaves
+                #   a worker has done all jobs and leaves
                 working_workers -= 1
                 if working_workers == 0:
                     break
             else:
-                yield data
+                for each in data:
+                    yield each
             #   print logs
             if self.thread_num == 0:
                 continue
@@ -174,7 +177,7 @@ class MP(object):
 if __name__ == '__main__':# {{{
     from IPython import embed
     def add(a, b):
-        time.sleep(0.5)
+        time.sleep(0.1)
         return [a+b]
     data = []
     # for i in range(100):
@@ -185,19 +188,18 @@ if __name__ == '__main__':# {{{
             batch_size=3, random_shuffle=True, keep_order=True, object_type='thread')
     
     if 1 == 1:
-        #   save memory
-        for data in mp.generator():
-            pass
-            # print('Data:', data)
+        #   save memory, get from generator
+        for pack_id, data in mp.generator():
+            print('Data:', data)
     else:   
         #   run as default
         mp.work()
+        #   answer in mp.result
+        # print(mp.result[-10:])
+
     print('\n')
     print('-' * 64)
     input('Press Enter to continue ..\n')
 
-    # print(mp.order[-10:])
-    # print(mp.receiver[-10:])
-    # print(mp.result[-10:])
     pass
 # }}}
