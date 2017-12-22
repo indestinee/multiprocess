@@ -179,15 +179,18 @@ if __name__ == '__main__':# {{{
     def add(a, b):
         time.sleep(0.1)
         return [a+b]
-    data = []
-    # for i in range(100):
-        # data.append({'a': i, 'b': i+i})
+    list_input = []
+    dict_input = []
     for i in range(100):
-        data.append([i, i+i])
-    mp = MP(thread_num=4, func=add, args=data,\
-            batch_size=3, random_shuffle=True, keep_order=True, object_type='thread')
+        dict_input.append({'a': i, 'b': i+i})
+    for i in range(100):
+        list_input.append([i, i+i])
+
+    mp = MP(thread_num=4, func=add, args=list_input,\
+        batch_size=3, random_shuffle=True, keep_order=True,\
+        object_type='thread')
     
-    if 1 == 1:
+    if True:
         #   save memory, get from generator
         for pack_id, data in mp.generator():
             print('Data:', data)
