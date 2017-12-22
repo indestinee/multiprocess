@@ -1,11 +1,12 @@
 import numpy as np
-import time
+import time, os, pickle
 
 
 class MP(object):
     def __init__(self, thread_num, func, args, # {{{
-            batch_size=10, random_shuffle=True, keep_order=False,\
-            show_percentage=1, object_type='process', worker_prepare=None):
+            batch_size=10, random_shuffle=True, keep_order=False, \
+            show_percentage=1, object_type='process', worker_prepare=None, \
+            shutdown_continue=None):
         '''
         args:
             thread_num: number of threads
@@ -30,7 +31,7 @@ class MP(object):
             from queue import Queue
         else:
             assert object_type in ['process', 'thread']
-
+        
         #   copy the args of the class
         self.worker_prepare = worker_prepare
         self.thread_num = thread_num
@@ -39,14 +40,31 @@ class MP(object):
         self.keep_order = keep_order
         self.random_shuffle = random_shuffle
         self.batch_size = batch_size
-        self.task_num = len(self.args)
+        self.shutdown_continue = shutdown_continue
         data_type = type(self.args[0])
+
+        if self.shutdown_continue:
+            if os.path.isfile(self.shutdown_continue):
+                print('[OPR] cache found in %s, loading ..' % \
+                    self.shutdown_continue)
+                with open(self.shutdown_continue, 'rb') as f:
+                    self.finish = pickle.load(f)
+            else:
+                self.finish = set()
+                print('[LOG] no cache found ..')
+        else:
+            self.finish = set()
+            
+
         assert data_type in [dict, list],\
             'type of each args must be in [\'dict\', \'list\'], but currently {}'\
             .format(data_type)
         self.if_dict = data_type == dict
         #   initialize the order list of args
-        self.order = [i for i in range(len(self.args))]
+        self.order = [i for i in range(len(self.args)) \
+            if i not in self.finish]
+        self.task_num = len(self.order)
+
         if self.random_shuffle:
             np.random.shuffle(self.order)
         
@@ -60,6 +78,13 @@ class MP(object):
         
         #   initialize result and receiver
         self.result, self.receiver = [], []
+    # }}}
+    def done(self, index):
+        self.finish.add(index)
+    def save(self):# {{{
+        assert self.shutdown_continue
+        with open(self.shutdown_continue, 'wb') as f:
+            pickle.dump(self.finish, f)
     # }}}
     def worker(self, index):# {{{
         if self.worker_prepare:
@@ -90,7 +115,7 @@ class MP(object):
         print('[SUC] worker #%d finishes jobs and goes home ..' % index)
     # }}}
     def contractor(self):# {{{
-        print('[OPR] contractor starts assigining jobs ..')
+        print('[OPR] contractor starts assigining %d jobs ..'%self.task_num)
         #   assign tasks
         for i in range(0, self.task_num, self.batch_size):
             self.q_task.put(self.order[i: i+self.batch_size])
@@ -152,6 +177,7 @@ class MP(object):
             if self.thread_num == 0:
                 continue
             finish += len(data)
+            assert task_num > 0, '[ERR] no tasks left ..'
             tmp = finish * 100.0 / task_num
             if tmp - rate >= 1:
                 rate = tmp
@@ -165,7 +191,7 @@ class MP(object):
         self.work_start()
         for data in self.run_receiver():
             yield data
-        self.work_finish
+        self.work_finish()
     # }}}
     def work(self):# {{{
         self.work_start()
@@ -188,12 +214,18 @@ if __name__ == '__main__':# {{{
 
     mp = MP(thread_num=4, func=add, args=list_input,\
         batch_size=3, random_shuffle=True, keep_order=True,\
-        object_type='thread')
+        object_type='thread', shutdown_continue='./save.bin')
     
     if True:
         #   save memory, get from generator
-        for pack_id, data in mp.generator():
+        for i, [pack_id, data] in enumerate(mp.generator()):
             print('Data:', data)
+            mp.done(pack_id)
+            if i >= 48:
+                mp.save()
+                break
+
+
     else:   
         #   run as default
         mp.work()
