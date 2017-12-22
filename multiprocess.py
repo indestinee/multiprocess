@@ -5,7 +5,7 @@ import time
 class MP(object):
     def __init__(self, thread_num, func, args, # {{{
             batch_size=10, random_shuffle=True, keep_order=False,\
-            show_percentage=1.0, object_type='process'):
+            show_percentage=1, object_type='process', worker_prepare=None):
         '''
         args:
             thread_num: number of threads
@@ -31,6 +31,7 @@ class MP(object):
             assert object_type in ['process', 'thread']
 
         #   copy the args of the class
+        self.worker_prepare = worker_prepare
         self.thread_num = thread_num
         self.func = func
         self.args = args
@@ -60,6 +61,9 @@ class MP(object):
         self.result, self.receiver = [], []
     # }}}
     def worker(self, index):# {{{
+        if self.worker_prepare:
+            print('[OPR] workers prepare to work ..')
+            self.worker_prepare(index=index)
         print('[OPR] worker #%d starts working ..' % index)
         while True:
             #   ask for task
