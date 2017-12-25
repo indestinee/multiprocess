@@ -179,7 +179,7 @@ class MP(object):
             finish += len(data)
             assert task_num > 0, '[ERR] no tasks left ..'
             tmp = finish * 100.0 / task_num
-            if tmp - rate >= 1:
+            if tmp - rate >= self.show_percentage:
                 rate = tmp
                 t1 = time.time() - self.t0
                 t2 = t1 / rate * 100.0 - t1
