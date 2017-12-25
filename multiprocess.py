@@ -6,7 +6,7 @@ class MP(object):
     def __init__(self, thread_num, func, args, # {{{
             batch_size=10, random_shuffle=True, keep_order=False, \
             show_percentage=1, object_type='process', worker_prepare=None, \
-            shutdown_continue=None):
+            shutdown_continue=None, queue_max_size=1024):
         '''
         args:
             thread_num: number of threads
@@ -69,7 +69,7 @@ class MP(object):
             np.random.shuffle(self.order)
         
         #   initialize the queue for task-sending and result-sending
-        self.q_task, self.q_finish = Queue(), Queue()
+        self.q_task, self.q_finish = Queue(queue_max_size), Queue(queue_max_size)
 
         #   initialize contractor and workers
         self.contractor = Process(target=self.contractor, args=())
