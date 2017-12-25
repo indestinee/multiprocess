@@ -41,6 +41,7 @@ class MP(object):
         self.random_shuffle = random_shuffle
         self.batch_size = batch_size
         self.shutdown_continue = shutdown_continue
+        self.show_percentage = show_percentage
         data_type = type(self.args[0])
 
         if self.shutdown_continue:
@@ -203,7 +204,7 @@ class MP(object):
 if __name__ == '__main__':# {{{
     from IPython import embed
     def add(a, b):
-        time.sleep(0.1)
+        time.sleep(0.01)
         return [a+b]
     list_input = []
     dict_input = []
@@ -214,18 +215,16 @@ if __name__ == '__main__':# {{{
 
     mp = MP(thread_num=4, func=add, args=list_input,\
         batch_size=3, random_shuffle=True, keep_order=True,\
-        object_type='thread', shutdown_continue='./save.bin')
+        object_type='thread', shutdown_continue='./save.bin', queue_max_size=10)
     
     if True:
         #   save memory, get from generator
         for i, [pack_id, data] in enumerate(mp.generator()):
+            print(mp.q_task.qsize())
+            print(mp.q_finish.qsize())
             print('Data:', data)
             mp.done(pack_id)
-            if i >= 48:
-                mp.save()
-                break
-
-
+            time.sleep(1)
     else:   
         #   run as default
         mp.work()
