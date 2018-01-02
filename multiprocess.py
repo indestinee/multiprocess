@@ -4,7 +4,7 @@ import time, os, pickle
 
 class MP(object):
     def __init__(self, thread_num, func, args, # {{{
-            batch_size=10, random_shuffle=True, keep_order=False,
+            batch_size=1, random_shuffle=False, keep_order=False,
             show_percentage=1, object_type='process', worker_prepare=None,
             shutdown_continue=None, queue_max_size=1024):
         '''
@@ -134,6 +134,8 @@ class MP(object):
             print('[OPR] contractor starts assigining jobs (generator) ..')
             pack = []
             for i, data in enumerate(self.args):
+                if not (isinstance(data, list) or isinstance(data, dict)):
+                    data = [data]
                 pack.append([i, data])
                 if i % self.batch_size == 0:
                     self.q_task.put(pack)
@@ -217,7 +219,6 @@ TIME: %.2f, ETA: %.2f' % (rate, finish, task_num, t1, t2))
     # }}}
 
 if __name__ == '__main__':# {{{
-    from IPython import embed
     def add(a, b):
         time.sleep(0.01)
         return [a+b]
