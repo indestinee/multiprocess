@@ -138,7 +138,7 @@ class MP(object):
                     data = [data]
                 pack.append([i, data])
                 if i % self.batch_size == 0:
-                    self.q_task.put(pack)
+                    self.q_task.put(pack.copy())
                     pack.clear()
             if len(pack) > 0:
                 self.q_task.put(pack)
